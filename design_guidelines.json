@@ -1,0 +1,172 @@
+{
+  "theme": "Dark Creative Studio (RunwayML / Midjourney Alpha style)",
+  "typography": {
+    "headings": {
+      "font_family": "Outfit, sans-serif",
+      "weights": ["400", "500", "700"],
+      "usage": "Use Outfit for all primary headings, modal titles, and section headers. Gives a geometric, modern, non-generic tech vibe.",
+      "styles": "Tight tracking on large text (tracking-tight)."
+    },
+    "body": {
+      "font_family": "Manrope, sans-serif",
+      "weights": ["400", "500"],
+      "usage": "Clean legibility for UI text, labels, and paragraph descriptions."
+    },
+    "monospace": {
+      "font_family": "JetBrains Mono, monospace",
+      "weights": ["400"],
+      "usage": "Use for prompt input text, seed numbers, dimensions, image counts, and MCP server configuration/auth tokens."
+    }
+  },
+  "colors": {
+    "background": {
+      "base": "#09090b",
+      "panel": "#18181b",
+      "floating": "rgba(24, 24, 27, 0.7)"
+    },
+    "text": {
+      "primary": "#f4f4f5",
+      "secondary": "#a1a1aa",
+      "muted": "#71717a"
+    },
+    "border": {
+      "default": "#27272a",
+      "focus": "#52525b"
+    },
+    "accent": {
+      "primary": "#e4e4e7",
+      "secondary": "#27272a",
+      "highlight": "#3b82f6"
+    },
+    "status": {
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#ef4444"
+    },
+    "forbidden_colors": [
+      "AI-slop purple/violet gradients",
+      "pure black #000000",
+      "pure white #ffffff"
+    ]
+  },
+  "layouts": {
+    "app_structure": {
+      "type": "sidebar_central_floating",
+      "sidebar": "Left-aligned, fixed, width ~64px or 240px (expandable). Contains navigation modes (Text-to-Image, Image-to-Image, Bulk Generation, Settings) and user profile.",
+      "central_canvas": "Takes up remaining width/height. Houses the Masonry Gallery for history, Bulk Queue list, or Reference Upload dashboard.",
+      "floating_prompt_bar": "Fixed at the bottom center of the viewport (z-50). Glassmorphic panel housing prompt input, model selector, aspect ratio, image count, and Generate button."
+    },
+    "masonry_gallery": {
+      "description": "Grid layout where items have varying heights but fixed widths (columns). Use CSS columns or a masonry library. Cards should have hover states exposing actions (Download, Copy Prompt, Delete, Regenerate).",
+      "spacing": "gap-4"
+    },
+    "bulk_queue": {
+      "description": "A dense list or vertical card stack. Each item shows prompt snippet, style thumbnail, status (Pending, Generating, Complete, Failed), and progress. Global 'Download All as ZIP' action at the top."
+    }
+  },
+  "components": {
+    "floating_prompt_bar": {
+      "style": "backdrop-blur-xl bg-zinc-900/80 border border-zinc-800 rounded-2xl shadow-2xl p-2 max-w-4xl w-full mx-auto flex flex-col gap-2",
+      "rules": "Never use fully transparent background here. Ensure contrast."
+    },
+    "buttons": {
+      "generate": "Pill-shaped, bg-zinc-100 text-zinc-900 hover:bg-white font-medium px-6 py-2 transition-all active:scale-95.",
+      "secondary": "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white border border-zinc-700."
+    },
+    "reference_upload_zone": {
+      "style": "Dashed border (border-zinc-700), bg-zinc-900/50 hover:bg-zinc-800/50 transition-colors rounded-xl flex flex-col items-center justify-center p-8",
+      "interactions": "Highlight border on drag-over."
+    },
+    "style_preset_grid": {
+      "layout": "grid grid-cols-2 md:grid-cols-4 gap-3",
+      "card_style": "Relative rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-zinc-500 transition-all aspect-square.",
+      "active_state": "border-zinc-100 ring-2 ring-zinc-100/20",
+      "label": "Absolute bottom-0 w-full p-2 bg-gradient-to-t from-black/90 to-transparent text-xs font-medium text-white"
+    },
+    "sliders": {
+      "style": "Thin track (bg-zinc-800), prominent thumb (bg-zinc-300). Used for 'Reference Strength' (Subtle / Balanced / Strong)."
+    },
+    "dropdowns": {
+      "style": "bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl",
+      "rules": "Never use transparent backgrounds for dropdowns. Must obscure content behind them."
+    },
+    "mcp_settings": {
+      "style": "Card-based layout in Settings view. Display Server URL and Auth Token in disabled input fields (font-mono text-sm) with 'Copy' buttons adjacent. Include short markdown-style instructions for Claude integration."
+    }
+  },
+  "motion": {
+    "hover_states": "Subtle background lightening (bg-zinc-800 to bg-zinc-700), slight scale up on images.",
+    "transitions": "Use specific properties: transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease.",
+    "loading": "Pulse animations on queue items; shimmering gradient on the 'Generating...' state of the main button."
+  },
+  "visual_enhancers": {
+    "borders": "Use 1px solid borders with low opacity (border-zinc-800) instead of heavy drop shadows to define surfaces.",
+    "glassmorphism": "Used selectively on Floating Prompt Bar and Lightbox overlays (backdrop-blur-xl bg-zinc-900/70).",
+    "corners": "Rounded-xl to rounded-2xl for main panels, rounded-md for small UI elements."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over images has sufficient gradient underlay or text-shadow.",
+    "focus": "All interactive elements must have visible focus rings (focus:ring-2 focus:ring-zinc-500).",
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case based on role (e.g., data-testid='generate-image-button', data-testid='style-preset-cyberpunk')."
+  },
+  "image_urls": {
+    "cinematic": {
+      "url": "https://images.pexels.com/photos/13226337/pexels-photo-13226337.jpeg",
+      "description": "Cinematic style preset thumbnail"
+    },
+    "anime": {
+      "url": "https://images.pexels.com/photos/34062274/pexels-photo-34062274.jpeg",
+      "description": "Anime style preset thumbnail"
+    },
+    "3d_render": {
+      "url": "https://images.pexels.com/photos/29450016/pexels-photo-29450016.jpeg",
+      "description": "3D Render style preset thumbnail"
+    },
+    "photorealistic": {
+      "url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxwaG90b3JlYWxpc3RpYyUyMGh1bWFuJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzg2NTIwNjY5fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Photorealistic style preset thumbnail"
+    },
+    "watercolor": {
+      "url": "https://images.pexels.com/photos/30072885/pexels-photo-30072885.jpeg",
+      "description": "Watercolor style preset thumbnail"
+    },
+    "cyberpunk": {
+      "url": "https://images.pexels.com/photos/31413138/pexels-photo-31413138.jpeg",
+      "description": "Cyberpunk style preset thumbnail"
+    },
+    "product_shot": {
+      "url": "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwcHJvZHVjdCUyMHBob3RvZ3JhcGh5fGVufDB8fHx8MTc4NjUyMDY2OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Product shot style preset thumbnail"
+    },
+    "portrait": {
+      "url": "https://images.pexels.com/photos/12695346/pexels-photo-12695346.jpeg",
+      "description": "Dramatic portrait style preset thumbnail"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build the application using React (.js files, not .tsx) and Tailwind CSS.",
+    "Implement the 'Dark Creative Studio' theme utilizing zinc/neutral colors. Avoid generic purple/violet AI gradients completely.",
+    "Construct the layout with a fixed sidebar for navigation, a large central canvas for content, and a fixed floating prompt bar at the bottom.",
+    "Implement the Floating Prompt Bar with glassmorphism (backdrop-blur-xl bg-zinc-900/80). Include prompt input, negative prompt toggle, model selector (Gemini 2.5 Flash / Imagen), aspect ratio picker, and image count.",
+    "In the Image-to-Image / Reference workflow, build a drag-and-drop zone. Include a slider for Reference Strength.",
+    "For the Bulk Generation mode, build a queue visualization showing individual prompt status (Pending/Generating/Done) and a 'Download ZIP' button.",
+    "Build the gallery using a masonry layout. Include hover overlays with actions: Download, Copy Prompt, Delete, Regenerate.",
+    "Create the Style Presets grid using the provided image_urls for thumbnails. The grid should visually indicate the selected style.",
+    "Build an MCP Settings page displaying the Server URL and Auth Token in read-only monospaced inputs with Copy buttons.",
+    "Add `data-testid` attributes to all buttons, inputs, and interactive elements.",
+    "Do not use `transition: all`. Specify transition properties explicitly.",
+    "Ensure dropdowns and overlays do not have fully transparent backgrounds to maintain legibility."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Create depth through layered design elements with z-index hierarchy and 1px subtle borders instead of heavy shadows in dark mode.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) combined with a semi-opaque background color.",
+    "You MUST NOT apply universal transition (e.g., transition: all). Always add transitions for specific interactive properties.",
+    "You MUST NOT center align the app container in global CSS.",
+    "Use modern button styles (pill-shaped or sharp) with interaction animations.",
+    "NEVER use AI assistant Emoji characters (like robots, brains, lightbulbs) for icons. Use proper SVG icon libraries (lucide-react).",
+    "Every interaction needs micro-animations - hover states, transitions, scale effects on click.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Prioritize using pre-existing Shadcn components where applicable, customizing them to fit the dark studio theme.",
+    "Use sonner for toast notifications."
+  ]
+}

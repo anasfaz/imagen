@@ -1,0 +1,30 @@
+{
+  "summary": "First-run backend+frontend test for Imagen Studio. Backend: 18/18 pytest tests pass covering meta, generate, references, presets (CRUD + analyze), gallery (list/delete), bulk (start->poll->completed->zip), settings (get/update/clear/regenerate MCP token), and MCP transport (401 without auth, initialize handshake, tools/list returns exactly the 6 expected tools, tools/call list_gallery returns absolute https URLs). Frontend: Studio, Bulk, Gallery (with lightbox + all 5 action buttons), Presets (dialog opens with all fields), Settings (MCP URL ends with /api/mcp, token is 44 chars) all load correctly. Bulk end-to-end flow completed with ZIP button clickable.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "bulk-item-status-{i} data-testid appears only during pending/generating states; once the item reaches 'done' the status label is replaced by an icon-only variant, so the testid vanishes from the DOM. Consider keeping the testid on the status container in all states so automated tests can assert 'done'.",
+    "MCPAuthMiddleware reads token from DB on every request via service.get_mcp_token(); consider caching after first read to avoid an extra DB roundtrip per MCP call (low priority).",
+    "GET /api/settings response is unauthenticated and exposes the current mcp_token in plaintext; acceptable for MVP behind ingress but note that anyone hitting /api/settings can retrieve the MCP token."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/__init__.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "None needed — EMERGENT_LLM_KEY already configured in /app/backend/.env",
+  "seed_data_creation": "Generated test images, references, style presets, and bulk batches under TEST_ prefixed names. Test-created presets are deleted; generated images may remain in the gallery.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live at /app/backend/tests/backend_test.py. MCP tests must POST to /api/mcp/ (trailing slash) with Authorization: Bearer <token> and Accept: application/json, text/event-stream. tools/list/tools/call responses come back as SSE (text/event-stream) — parse the 'data:' line to extract the JSON-RPC payload. Bulk batches take ~60-120s to complete; poll with generous timeouts. The presets-dialog-description data-testid renders only after a reference is uploaded/analyzed (conditional field), which is expected. The bulk-item-status-{i} testid disappears when an item completes — currently tests must poll backend or wait for the ZIP button.",
+  "rca of the issue": "No issues found."
+}

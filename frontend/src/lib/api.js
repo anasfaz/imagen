@@ -1,0 +1,100 @@
+import axios from "axios";
+
+const BACKEND = process.env.REACT_APP_BACKEND_URL;
+export const API_BASE = `${BACKEND}/api`;
+export const BACKEND_URL = BACKEND;
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  timeout: 180000,
+});
+
+// Convert a backend-relative /api/images/... URL to an absolute URL the browser can load.
+export function absoluteUrl(u) {
+  if (!u) return u;
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `${BACKEND}${u.startsWith("/") ? "" : "/"}${u}`;
+}
+
+export async function listModels() {
+  const { data } = await api.get("/models");
+  return data.models;
+}
+
+export async function generateImages(payload) {
+  const { data } = await api.post("/generate", payload);
+  return data.images;
+}
+
+export async function uploadReference(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const { data } = await api.post("/references/upload", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data; // {storage_path, image_url}
+}
+
+export async function analyzeReference(reference_image_url) {
+  const { data } = await api.post("/references/analyze", { reference_image_url });
+  return data.style_description;
+}
+
+export async function listPresets() {
+  const { data } = await api.get("/style-presets");
+  return data.presets;
+}
+
+export async function createPreset(payload) {
+  const { data } = await api.post("/style-presets", payload);
+  return data;
+}
+
+export async function deletePreset(id) {
+  const { data } = await api.delete(`/style-presets/${id}`);
+  return data;
+}
+
+export async function listGallery(limit = 60, offset = 0) {
+  const { data } = await api.get("/gallery", { params: { limit, offset } });
+  return data.generations;
+}
+
+export async function deleteGeneration(id) {
+  const { data } = await api.delete(`/gallery/${id}`);
+  return data;
+}
+
+export async function startBulk(payload) {
+  const { data } = await api.post("/bulk", payload);
+  return data;
+}
+
+export async function getBatch(batchId) {
+  const { data } = await api.get(`/bulk/${batchId}`);
+  return data;
+}
+
+export async function listBatches() {
+  const { data } = await api.get("/bulk");
+  return data.batches;
+}
+
+export function batchZipUrl(batchId) {
+  return `${API_BASE}/bulk/${batchId}/zip`;
+}
+
+export async function getSettings() {
+  const { data } = await api.get("/settings");
+  return data;
+}
+
+export async function saveGeminiKey(gemini_api_key) {
+  const { data } = await api.post("/settings", { gemini_api_key });
+  return data;
+}
+
+export async function regenerateMcpToken() {
+  const { data } = await api.post("/settings/mcp/regenerate");
+  return data.mcp_token;
+}
