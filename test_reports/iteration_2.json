@@ -1,0 +1,23 @@
+{
+  "summary": "Verified the new MCP URL-path token auth mode for claude.ai custom connector. Added /app/backend/tests/test_mcp_path_token.py with 11 focused tests covering: mcp_connect_path field in /api/settings, path-token auth (valid=200 / wrong=401 / missing=401), that pre-existing Bearer/X-API-Key/query auth still works, OPTIONS preflight not 401, full initialize -> notifications/initialized -> tools/list (6 tools) via path-token with same session-id, tools/call list_gallery returning absolute https URLs, and regenerate flow invalidating the old path token. All 11 tests pass. Frontend Settings page verified: green 'Recommended for claude.ai' card renders with Claude URL field (data-testid='settings-mcp-claude-url'), value equals REACT_APP_BACKEND_URL + '/api/mcp/' + mcp_token + '/' after clicking show, and copy button (data-testid='settings-mcp-copy-claude-url') is present.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_mcp_path_token.py",
+    "/app/test_reports/pytest/pytest_mcp_path.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mcp_app.py path-token regex uses re.search with $ anchor which correctly matches token as last non-trailing-slash segment. Rewriting scope['path'] and scope['raw_path'] to '/' works with the streamable_http_app mount.",
+    "server.py mounts mcp app AFTER include_router but adds CORSMiddleware AFTER the mount — Starlette middleware order means CORS still applies to routes but may not to mounted ASGI sub-apps. Path-token OPTIONS returned non-401 in test, so functional; consider explicitly handling CORS in the mcp ASGI wrapper for browser clients on non-* origins.",
+    "get_mcp_token(create_if_missing=True) is called on every MCP request — acceptable but a small DB hit per request; could be cached in-memory with invalidation on regenerate."
+  ],
+  "updated_files": ["/app/backend/tests/test_mcp_path_token.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "none required (EMERGENT_LLM_KEY already configured)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Full backend regression at /app/backend/tests/backend_test.py; new path-token specific tests at /app/backend/tests/test_mcp_path_token.py. Frontend Settings page has three MCP fields: Claude URL (settings-mcp-claude-url), Server URL, Auth token. Green emerald card wraps the Claude URL. MCP token gets regenerated during test_regen_updates_path_token — subsequent tests reading /api/settings will see the newest token.",
+  "rca of the issue": "N/A — this is a feature verification, not a bug fix."
+}

@@ -25,6 +25,7 @@ import service  # noqa: E402
 import gen as gen_module  # noqa: E402
 import storage as storage_module  # noqa: E402
 import mcp_app  # noqa: E402
+from oauth import router as oauth_router  # noqa: E402
 from models import (  # noqa: E402
     GenerateRequest,
     BulkGenerateRequest,
@@ -307,14 +308,16 @@ async def serve_image(path: str):
 # ---------------- settings ----------------
 @api_router.get("/settings")
 async def settings_get():
-    # Never return the actual key value — just whether one is set. Return MCP token.
     from db import settings_col
     doc = await settings_col.find_one({"_id": "singleton"}) or {}
+    token = await service.get_mcp_token(create_if_missing=True)
     return {
         "gemini_api_key_set": bool(doc.get("gemini_api_key")),
         "gemini_api_key_source": "user_override" if doc.get("gemini_api_key") else "emergent_universal",
-        "mcp_token": await service.get_mcp_token(create_if_missing=True),
+        "mcp_token": token,
         "mcp_endpoint": "/api/mcp",
+        # Ready-to-paste URL for Claude custom connectors that only support a URL field.
+        "mcp_connect_path": f"/api/mcp/{token}/",
     }
 
 
@@ -333,6 +336,7 @@ async def mcp_regenerate():
 
 # ---------------- mount router ----------------
 app.include_router(api_router)
+app.include_router(oauth_router)
 
 # Mount MCP server ASGI app at /api/mcp (streamable HTTP) — with auth middleware.
 # The Kubernetes ingress routes only /api/* to the backend, so the MCP endpoint

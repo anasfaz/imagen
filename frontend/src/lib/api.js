@@ -127,6 +127,10 @@ export function batchZipUrl(batchId) {
 
 export async function getSettings() {
   const { data } = await api.get("/settings");
+  // Attach the absolute Claude connect URL for convenience.
+  if (data.mcp_connect_path) {
+    data.mcp_connect_url = `${BACKEND_URL}${data.mcp_connect_path}`;
+  }
   return data;
 }
 

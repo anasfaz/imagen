@@ -67,6 +67,7 @@ export default function Settings() {
   }
 
   const mcpUrl = `${BACKEND_URL}/api/mcp`;
+  const claudeUrl = settings.mcp_connect_url || `${BACKEND_URL}/api/mcp/${settings.mcp_token}/`;
 
   return (
     <div data-testid={TID.settings.root} className="min-h-full px-6 md:px-10 py-10 max-w-[900px] mx-auto">
@@ -146,6 +147,27 @@ export default function Settings() {
         </div>
 
         <div className="space-y-3">
+          <div className="rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+                Recommended for claude.ai
+              </span>
+            </div>
+            <p className="text-[12px] text-zinc-300 mb-2 leading-relaxed">
+              Paste this single URL into <span className="font-mono">Settings → Connectors → Add custom connector</span>.
+              Leave OAuth fields blank — the token is embedded in the URL.
+            </p>
+            <FieldRow
+              label="Claude URL"
+              value={claudeUrl}
+              testId="settings-mcp-claude-url"
+              copyTestId="settings-mcp-copy-claude-url"
+              copied={copied.claudeUrl}
+              onCopy={() => copy("claudeUrl", claudeUrl)}
+              secretMask
+            />
+          </div>
+
           <FieldRow
             label="Server URL"
             value={mcpUrl}
@@ -179,25 +201,27 @@ export default function Settings() {
             How to connect from Claude
           </div>
           <ol className="text-xs text-zinc-300 space-y-1.5 list-decimal pl-4">
-            <li>Open Claude Desktop → Settings → Connectors → “Add custom connector”.</li>
+            <li>Open Claude → Settings → Connectors → “Add custom connector”.</li>
             <li>
-              Set the URL to <span className="font-mono text-zinc-100">{mcpUrl}</span>.
+              Paste the <span className="font-mono text-zinc-100">Claude URL</span> above into the URL
+              field (it already contains your token). Leave OAuth fields empty.
             </li>
             <li>
-              Under authentication, choose <span className="font-mono">Bearer token</span> and paste
-              the auth token above (or set an <span className="font-mono">X-API-Key</span> header
-              with the same value).
-            </li>
-            <li>
-              You now have <span className="font-mono">generate_image</span>,{" "}
+              Click Connect. Claude will discover 6 tools:{" "}
+              <span className="font-mono">generate_image</span>,{" "}
               <span className="font-mono">bulk_generate</span>,{" "}
               <span className="font-mono">get_batch_status</span>,{" "}
               <span className="font-mono">list_style_presets</span>,{" "}
-              <span className="font-mono">create_style_preset</span> and{" "}
-              <span className="font-mono">list_gallery</span> available inside Claude.
+              <span className="font-mono">create_style_preset</span>,{" "}
+              <span className="font-mono">list_gallery</span>.
+            </li>
+            <li>
+              For Claude Desktop or CLI clients that support Bearer tokens, you can instead use the
+              plain Server URL above and send the token in an{" "}
+              <span className="font-mono">Authorization: Bearer</span> header.
             </li>
           </ol>
-            <div className="text-[11px] text-zinc-500 mt-3">
+          <div className="text-[11px] text-zinc-500 mt-3">
             Try: <span className="italic text-zinc-300">generate 20 cinematic portrait prompts and render them all with my Neon Noir style preset.</span>
           </div>
         </div>

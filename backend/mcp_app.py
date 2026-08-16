@@ -1,11 +1,10 @@
 """MCP server exposing image generation tools to Claude via streamable HTTP."""
 import os
 import logging
+import re
 from typing import Optional
 
 from mcp.server.mcpserver import MCPServer
-from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -23,22 +22,9 @@ def _extract_bearer(header: Optional[str]) -> Optional[str]:
     return header.strip()
 
 
-class MCPAuthMiddleware(BaseHTTPMiddleware):
-    """Enforce the MCP auth token on every request to the mounted /mcp app."""
-
-    async def dispatch(self, request: Request, call_next):
-        provided = (
-            request.headers.get("X-API-Key")
-            or _extract_bearer(request.headers.get("Authorization"))
-            or request.query_params.get("token")
-        )
-        expected = await service.get_mcp_token(create_if_missing=True)
-        if not expected or provided != expected:
-            return JSONResponse(
-                {"error": "Unauthorized. Provide the MCP token via X-API-Key or Authorization: Bearer <token>."},
-                status_code=401,
-            )
-        return await call_next(request)
+# Token identifier — the tokens we mint start with this prefix so we can
+# safely distinguish them from other URL path segments used by the inner app.
+TOKEN_PREFIX = "mcp_"
 
 
 mcp = None
@@ -285,19 +271,92 @@ async def list_gallery(limit: int = 20, offset: int = 0) -> dict:
 
 
 def build_mcp_asgi_app():
-    """Return the ASGI app to mount at /api/mcp with auth middleware wrapping it."""
+    """Return the ASGI app to mount at /api/mcp.
+
+    Supports FOUR auth modes so it works from any client, including claude.ai's
+    custom-connector UI which does not expose a Bearer token field:
+      1. `X-API-Key: <token>` header
+      2. `Authorization: Bearer <token>` header
+      3. `?token=<token>` query string
+      4. Token embedded in URL path as the first segment, e.g.
+         `/api/mcp/mcp_abc123.../` — the wrapper strips it before forwarding.
+    """
     from mcp.server.transport_security import TransportSecuritySettings
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     inner = mcp.streamable_http_app(streamable_http_path="/", transport_security=security)
-    # Wrap with auth middleware
-    from starlette.applications import Starlette
-    from starlette.routing import Mount
 
-    wrapper = Starlette(
-        middleware=[Middleware(MCPAuthMiddleware)],
-        routes=[Mount("/", app=inner)],
-    )
-    return wrapper
+    def _unauthorized_for(request_path: str) -> JSONResponse:
+        """Return 401 with WWW-Authenticate so MCP clients discover our OAuth flow."""
+        public_base = (os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+        resource_meta = (
+            f"{public_base}/api/.well-known/oauth-protected-resource"
+            if public_base
+            else "/api/.well-known/oauth-protected-resource"
+        )
+        return JSONResponse(
+            {"error": "unauthorized"},
+            status_code=401,
+            headers={
+                # RFC 6750 + RFC 9728 challenge — points MCP clients (Claude) at
+                # our OAuth authorization server metadata.
+                "WWW-Authenticate": f'Bearer resource_metadata="{resource_meta}"',
+            },
+        )
+
+    async def app(scope, receive, send):
+        # Non-http (lifespan, websocket) → pass through
+        if scope["type"] != "http":
+            return await inner(scope, receive, send)
+
+        # OPTIONS/CORS pre-flight → pass through (inner responds)
+        if scope.get("method") == "OPTIONS":
+            return await inner(scope, receive, send)
+
+        expected = await service.get_mcp_token(create_if_missing=True)
+
+        provided: Optional[str] = None
+        original_path = scope.get("path", "/")
+
+        # 1) headers
+        for h_name, h_val in scope.get("headers") or []:
+            n = h_name.decode().lower()
+            v = h_val.decode()
+            if n == "x-api-key":
+                provided = v.strip()
+                break
+            if n == "authorization":
+                bearer = _extract_bearer(v)
+                if bearer:
+                    provided = bearer
+                    break
+
+        # 2) query string
+        if not provided:
+            qs = (scope.get("query_string") or b"").decode()
+            for pair in qs.split("&"):
+                if pair.startswith("token="):
+                    provided = pair.split("=", 1)[1]
+                    break
+
+        # 3) path prefix: e.g. /mcp_abc123/... — or the full /api/mcp/mcp_abc123/...
+        # The mounted app may see either the stripped or full path depending on
+        # ASGI stack — accept both.
+        path = original_path
+        if not provided:
+            m = re.search(r"/(" + TOKEN_PREFIX + r"[A-Za-z0-9]+)(/.*)?$", path)
+            if m:
+                provided = m.group(1)
+                # Rewrite path to strip the token segment so inner app sees "/" or the tail
+                new_path = m.group(2) or "/"
+                scope = {**scope, "path": new_path, "raw_path": new_path.encode()}
+
+        if expected and provided == expected:
+            return await inner(scope, receive, send)
+
+        response = _unauthorized_for(original_path)
+        return await response(scope, receive, send)
+
+    return app
 
 
 def get_session_manager():

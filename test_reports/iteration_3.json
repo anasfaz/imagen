@@ -1,0 +1,25 @@
+{
+  "summary": "Full OAuth 2.0 (RFC 8414 metadata + RFC 9728 protected resource + RFC 7591 DCR + Authorization Code with PKCE S256 + refresh_token) flow tested end-to-end against public URL. Verified /api/mcp/ returns 401 with proper WWW-Authenticate Bearer challenge pointing at resource-metadata, DCR mints fresh client_id/secret, authorize returns 302 with code+state, token exchange returns mcp_token as access_token, PKCE S256 is verified (wrong verifier -> 400 invalid_grant), codes are single-use, refresh_token grant works, unsupported response_type -> 400, OPTIONS pre-flight passes through without 401. Plain Bearer header and path-token URL still work. MCP handshake (initialize + notifications/initialized + tools/list) returns exactly the 6 expected tools. Non-MCP regressions (models=2, gallery, collections, style-presets, settings.mcp_connect_path) all green. Regenerating the MCP token invalidates the old bearer (401) and new OAuth flow yields the new token. 20/20 tests pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_oauth.py",
+    "/app/test_reports/pytest/pytest_oauth.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "oauth.py accepts client_secret=None but never enforces it — acceptable for a public/DCR-based MCP flow but worth a comment.",
+    "In-memory _CODES/_CLIENTS stores are per-process; not a concern for single-supervisor deployment but note if the app is scaled horizontally in future.",
+    "code_challenge_method comparison uses lower() while metadata advertises 'S256' upper-case — implementation handles both since it lowercases before compare; fine.",
+    "refresh_token grant accepts ANY non-empty refresh_token and returns the current mcp_token. Fine for this design (single-tenant, token == refresh_token) but should be documented."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_oauth.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "OAuth flow is fully working. test_oauth.py can be re-used as regression. Note: TestRegenerateInvalidatesOld rotates the MCP token as a side effect (a new one is generated at the end) — subsequent test runs continue to work because the fixture reads the current token from /api/settings each run.",
+  "rca of the issue": "n/a — feature verified working"
+}
