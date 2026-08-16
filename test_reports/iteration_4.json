@@ -1,0 +1,26 @@
+{
+  "summary": "Verified ROOT-LEVEL OAuth 2.0 discovery + DCR + Authorization Code (PKCE S256) + refresh_token flow that claude.ai probes for custom connectors. All root paths (https://<host>/.well-known/oauth-authorization-server, .../oauth-protected-resource, /oauth/register, /oauth/authorize, /oauth/token) are reachable through the new frontend setupProxy.js middleware which forwards to the backend's /api/... endpoints. RFC 8414 issuer-path variant (/.well-known/oauth-authorization-server/api) also works. Content-Type is application/json (not HTML) on every discovery response. Full OAuth flow executed entirely via root URLs yields access_token equal to the current mcp_token from GET /api/settings and completes a full MCP initialize + tools/list handshake returning exactly 6 tools. WWW-Authenticate on POST /api/mcp/ 401 now points to the root-level /.well-known/oauth-protected-resource (no /api prefix). PKCE S256 still enforced (wrong verifier -> 400 invalid_grant), codes are single-use, refresh_token grant works, OPTIONS pre-flight from Origin: https://claude.ai returns 204 without 401. Existing Bearer-header and path-token auth on /api/mcp/ still work. Non-MCP endpoints (models=2, settings.mcp_connect_path, gallery, collections, style-presets) unchanged. 19/19 tests pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_oauth_root.py",
+    "/app/backend/tests/test_oauth.py",
+    "/app/test_reports/pytest/pytest_oauth_root.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "setupProxy.js is a dev-server construct — in production (where CRA is built to static files) these root-level proxied paths will NOT exist unless the ingress or a production server rewrites them. Fine for the preview environment (which uses the dev server), but flag for prod deployment.",
+    "Issuer in the metadata still carries /api (e.g., 'https://.../api/oauth/authorize'). Once claude.ai follows the metadata it hits /api/... directly, not the root proxy — so the root proxy is only needed for the initial discovery + register/authorize/token URLs the client synthesizes from ROOT. This works, but is worth documenting.",
+    "In-memory _CODES/_CLIENTS stores are per-process; unchanged from prior iteration.",
+    "refresh_token grant accepts ANY non-empty refresh_token; unchanged from prior iteration."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_oauth_root.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Root-level OAuth flow is fully working via setupProxy.js. test_oauth_root.py covers all root-path claude.ai probes; test_oauth.py covers /api-prefixed variants. Both can be used as regression. Note: setupProxy.js only affects the CRA dev server; a production build would need equivalent ingress rewrites.",
+  "rca of the issue": "n/a — feature verified working"
+}

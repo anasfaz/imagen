@@ -288,17 +288,19 @@ def build_mcp_asgi_app():
     def _unauthorized_for(request_path: str) -> JSONResponse:
         """Return 401 with WWW-Authenticate so MCP clients discover our OAuth flow."""
         public_base = (os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+        # RFC 9728: point to the resource-metadata document. We advertise the
+        # root-level URL (proxied to the backend by the frontend dev-server) so
+        # that RFC 8414-strict clients like claude.ai find it at the expected
+        # location relative to the origin.
         resource_meta = (
-            f"{public_base}/api/.well-known/oauth-protected-resource"
+            f"{public_base}/.well-known/oauth-protected-resource"
             if public_base
-            else "/api/.well-known/oauth-protected-resource"
+            else "/.well-known/oauth-protected-resource"
         )
         return JSONResponse(
             {"error": "unauthorized"},
             status_code=401,
             headers={
-                # RFC 6750 + RFC 9728 challenge — points MCP clients (Claude) at
-                # our OAuth authorization server metadata.
                 "WWW-Authenticate": f'Bearer resource_metadata="{resource_meta}"',
             },
         )
