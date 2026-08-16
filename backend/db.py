@@ -12,4 +12,5 @@ db = client[_db_name]
 generations = db["generations"]      # each generated image (unit of gallery)
 batches = db["batches"]              # bulk batch metadata + per-prompt status
 style_presets = db["style_presets"]  # saved reference-based style presets
+collections = db["style_collections"]  # named groups of style presets (Team Style Library)
 settings_col = db["settings"]        # singleton settings doc (api key overrides, mcp token)

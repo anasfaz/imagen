@@ -46,16 +46,31 @@ class CreateStylePresetRequest(BaseModel):
     reference_image_urls: list[str]
     style_description: Optional[str] = None  # optional pre-generated description
     reference_strength: Optional[Literal["subtle", "balanced", "strong"]] = "balanced"
+    collection_id: Optional[str] = None
 
 
 class UpdateStylePresetRequest(BaseModel):
     name: Optional[str] = None
     style_description: Optional[str] = None
     reference_strength: Optional[Literal["subtle", "balanced", "strong"]] = None
+    collection_id: Optional[str] = None
 
 
 class AnalyzeReferenceRequest(BaseModel):
     reference_image_url: str
+
+
+class AnalyzeMultipleReferencesRequest(BaseModel):
+    reference_image_urls: list[str]
+
+
+class RemixRequest(BaseModel):
+    n: int = 10
+
+
+class CreateCollectionRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
 
 
 class SettingsUpdateRequest(BaseModel):

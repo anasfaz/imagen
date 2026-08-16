@@ -12,6 +12,7 @@ import {
   listModels,
   generateImages,
   analyzeReference,
+  analyzeReferencesMulti,
   listPresets,
   createPreset,
   absoluteUrl,
@@ -58,7 +59,7 @@ export default function Studio() {
     [savedPresetId, savedPresets],
   );
 
-  // Auto-analyze first newly uploaded reference to produce a style description
+  // Auto-analyze reference(s) — fuses multiple into one unified description.
   useEffect(() => {
     if (!references.length) {
       setStyleDescription("");
@@ -68,7 +69,10 @@ export default function Studio() {
     (async () => {
       setAnalyzing(true);
       try {
-        const desc = await analyzeReference(references[0].image_url);
+        const urls = references.map((r) => r.image_url);
+        const desc = urls.length > 1
+          ? await analyzeReferencesMulti(urls)
+          : await analyzeReference(urls[0]);
         setStyleDescription(desc);
       } catch (e) {
         toast.error("Style analysis failed: " + (e.response?.data?.detail || e.message));
@@ -85,9 +89,12 @@ export default function Studio() {
     }
     setAnalyzing(true);
     try {
-      const desc = await analyzeReference(references[0].image_url);
+      const urls = references.map((r) => r.image_url);
+      const desc = urls.length > 1
+        ? await analyzeReferencesMulti(urls)
+        : await analyzeReference(urls[0]);
       setStyleDescription(desc);
-      toast.success("Style re-analysed");
+      toast.success(urls.length > 1 ? "Style DNA fused from " + urls.length + " references" : "Style re-analysed");
     } catch (e) {
       toast.error("Analysis failed");
     } finally {
@@ -187,9 +194,14 @@ export default function Studio() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-mono uppercase tracking-widest text-zinc-500">Auto-extracted style</div>
+                  <div className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    {references.length > 1 ? "Fused style DNA" : "Auto-extracted style"}
+                  </div>
                   <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
-                    <Info className="w-3 h-3" /> Edit this to fine-tune how Gemini interprets the style.
+                    <Info className="w-3 h-3" />
+                    {references.length > 1
+                      ? `Blended from ${references.length} references — edit to fine-tune.`
+                      : "Edit this to fine-tune how Gemini interprets the style."}
                   </div>
                 </div>
                 <button
@@ -198,7 +210,7 @@ export default function Studio() {
                   disabled={analyzing}
                   className="text-[11px] text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-600 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-40"
                 >
-                  {analyzing ? "Analysing…" : "Re-analyse"}
+                  {analyzing ? "Analysing…" : references.length > 1 ? "Re-fuse" : "Re-analyse"}
                 </button>
               </div>
               <textarea

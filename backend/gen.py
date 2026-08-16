@@ -149,20 +149,85 @@ async def analyze_reference_style(
             "the visual style. Reply with plain prose only, no headings, no bullet lists."
         ),
     )
-    chat.with_model("gemini", "gemini-3-flash").with_params(modalities=["text"])
+    chat.with_model("gemini", MODEL_NANO_BANANA).with_params(modalities=["image", "text"])
     msg = UserMessage(
         text="Analyse the visual style of this reference image.",
         file_contents=[ImageContent(reference_image_b64)],
     )
-    try:
-        resp = await chat.send_message(msg)
-    except Exception:
-        # fall back to nano banana pro if gemini-3-flash isn't available
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=session_id + "-fb",
-            system_message="You are an art director describing visual style.",
-        )
-        chat.with_model("gemini", MODEL_NANO_BANANA_PRO).with_params(modalities=["text"])
-        resp = await chat.send_message(msg)
-    return (resp or "").strip()
+    text, _images = await chat.send_message_multimodal_response(msg)
+    return (text or "").strip()
+
+
+async def fuse_style_descriptions(
+    descriptions: list[str],
+    api_key_override: Optional[str] = None,
+) -> str:
+    """Combine multiple style descriptions into one unified description via Gemini text."""
+    api_key = _api_key(api_key_override)
+    if not api_key:
+        raise RuntimeError("No API key configured")
+    # Filter empties
+    parts = [d.strip() for d in descriptions if d and d.strip()]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    session_id = f"fuse-{uuid.uuid4()}"
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=session_id,
+        system_message=(
+            "You are a professional art director. You will be given several separate visual-style "
+            "descriptions extracted from different reference images. Fuse them into ONE unified "
+            "description (3-6 sentences, ~100-160 words) that reconciles: lighting, colour palette, "
+            "mood, camera/lens, composition, and rendering style. Highlight what the references have "
+            "in common and pick a consistent direction where they diverge. Reply with plain prose only."
+        ),
+    )
+    chat.with_model("gemini", MODEL_NANO_BANANA).with_params(modalities=["image", "text"])
+    joined = "\n\n".join([f"[Reference {i+1}]\n{p}" for i, p in enumerate(parts)])
+    msg = UserMessage(text=f"Reconcile these style descriptions into one:\n\n{joined}")
+    text, _images = await chat.send_message_multimodal_response(msg)
+    return (text or "").strip()
+
+
+async def remix_prompt_variations(
+    base_prompt: str,
+    n: int = 10,
+    api_key_override: Optional[str] = None,
+) -> list[str]:
+    """Ask Gemini for N smart variations of a base prompt for image generation."""
+    api_key = _api_key(api_key_override)
+    if not api_key:
+        raise RuntimeError("No API key configured")
+    n = max(1, min(20, int(n)))
+    session_id = f"remix-{uuid.uuid4()}"
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=session_id,
+        system_message=(
+            "You are a prompt-engineering assistant for AI image generation. "
+            "Given a base prompt, produce diverse but on-theme variations that a photographer or "
+            "art director might explore next. Vary composition, lighting, angle, mood, time of day, "
+            "or wardrobe/props — but keep the core subject and intent. Return the variations as a "
+            "plain numbered list (1. ... 2. ...). No preamble, no commentary, no markdown headings."
+        ),
+    )
+    chat.with_model("gemini", MODEL_NANO_BANANA).with_params(modalities=["image", "text"])
+    msg = UserMessage(text=f"Generate {n} variations of this prompt:\n\n{base_prompt}")
+    resp, _images = await chat.send_message_multimodal_response(msg)
+    text = (resp or "").strip()
+    # Parse numbered list (also handle "1)" / "-" bullets)
+    variations: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # strip leading "1.", "1)", "-", "*"
+        import re
+        m = re.match(r"^\s*(?:\d+[.)]\s+|[-*]\s+)?(.+)$", line)
+        if m:
+            v = m.group(1).strip().strip('"').strip("'")
+            if len(v) > 6:
+                variations.append(v)
+    return variations[:n]

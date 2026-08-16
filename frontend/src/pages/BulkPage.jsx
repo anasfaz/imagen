@@ -28,6 +28,20 @@ export default function BulkPage() {
   useEffect(() => {
     listModels().then(setModels).catch(() => {});
     listPresets().then(setPresets).catch(() => {});
+    // Consume any remix pre-fill left by the Gallery lightbox → Remix dialog.
+    try {
+      const raw = sessionStorage.getItem("bulk-prefill");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.prompts) setText(p.prompts);
+        if (p.model) setModel(p.model);
+        if (p.aspect_ratio) setAspect(p.aspect_ratio);
+        sessionStorage.removeItem("bulk-prefill");
+        toast.success("Loaded remixed prompts");
+      }
+    } catch {
+      /* ignore prefill parse errors */
+    }
   }, []);
 
   useEffect(() => {

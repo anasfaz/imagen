@@ -1,6 +1,6 @@
 import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import Studio from "@/pages/Studio";
@@ -8,8 +8,15 @@ import BulkPage from "@/pages/BulkPage";
 import Gallery from "@/pages/Gallery";
 import Presets from "@/pages/Presets";
 import Settings from "@/pages/Settings";
+import SharedImage from "@/pages/SharedImage";
 
 function Shell({ children }) {
+  const location = useLocation();
+  // Public share pages render standalone without the sidebar chrome.
+  const isPublic = location.pathname.startsWith("/s/");
+
+  if (isPublic) return children;
+
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 flex">
       <Sidebar />
@@ -38,6 +45,7 @@ function App() {
           <Route path="/presets" element={<Presets />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/s/:id" element={<SharedImage />} />
           <Route path="*" element={<Navigate to="/studio" replace />} />
         </Routes>
       </Shell>

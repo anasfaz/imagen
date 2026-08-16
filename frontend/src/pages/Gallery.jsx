@@ -3,12 +3,14 @@ import { toast } from "sonner";
 import { Images } from "lucide-react";
 import { listGallery, deleteGeneration, absoluteUrl } from "@/lib/api";
 import ImageLightbox from "@/components/ImageLightbox";
+import RemixDialog from "@/components/RemixDialog";
 import { TID } from "@/constants/testIds";
 
 export default function Gallery() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState(null);
+  const [remix, setRemix] = useState(null);
 
   useEffect(() => {
     load();
@@ -93,12 +95,17 @@ export default function Gallery() {
           image={lightbox}
           onClose={() => setLightbox(null)}
           onDelete={del}
+          onRemix={(img) => {
+            setLightbox(null);
+            setRemix(img);
+          }}
           onRegenerate={(img) => {
             const q = new URLSearchParams({ prompt: img.prompt, aspect: img.aspect_ratio || "1:1" });
             window.location.href = `/studio?${q.toString()}`;
           }}
         />
       )}
+      {remix && <RemixDialog generation={remix} onClose={() => setRemix(null)} />}
     </div>
   );
 }

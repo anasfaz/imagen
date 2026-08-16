@@ -31,6 +31,9 @@ from models import (  # noqa: E402
     CreateStylePresetRequest,
     UpdateStylePresetRequest,
     AnalyzeReferenceRequest,
+    AnalyzeMultipleReferencesRequest,
+    RemixRequest,
+    CreateCollectionRequest,
     SettingsUpdateRequest,
 )
 
@@ -175,10 +178,85 @@ async def analyze_reference(req: AnalyzeReferenceRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/references/analyze-multi")
+async def analyze_reference_multi(req: AnalyzeMultipleReferencesRequest):
+    try:
+        desc = await service.analyze_references_multi(req.reference_image_urls)
+        return {"style_description": desc}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("analyze_references_multi failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/gallery/{gen_id}/remix")
+async def gallery_remix(gen_id: str, req: RemixRequest):
+    try:
+        prompts = await service.remix_generation_prompt(gen_id, n=req.n or 10)
+        return {"prompts": prompts, "count": len(prompts)}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("remix failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/share/{gen_id}")
+async def public_share(gen_id: str):
+    """Public read-only view of a single generation. No auth required."""
+    doc = await service.get_generation(gen_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="not found")
+    return {
+        "id": doc["id"],
+        "image_url": doc["image_url"],
+        "prompt": doc["prompt"],
+        "model": doc.get("model"),
+        "aspect_ratio": doc.get("aspect_ratio"),
+        "created_at": doc.get("created_at"),
+    }
+
+
+# ---------------- collections ----------------
+@api_router.get("/collections")
+async def collections_list():
+    return {"collections": await service.list_collections()}
+
+
+@api_router.post("/collections")
+async def collections_create(req: CreateCollectionRequest):
+    return await service.create_collection(req.name, req.description)
+
+
+@api_router.delete("/collections/{collection_id}")
+async def collections_delete(collection_id: str):
+    ok = await service.delete_collection(collection_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
+
+
+@api_router.post("/collections/{collection_id}/presets/{preset_id}")
+async def collections_add_preset(collection_id: str, preset_id: str):
+    ok = await service.assign_preset_to_collection(preset_id, collection_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="preset not found")
+    return {"ok": True}
+
+
+@api_router.delete("/collections/{collection_id}/presets/{preset_id}")
+async def collections_remove_preset(collection_id: str, preset_id: str):
+    ok = await service.assign_preset_to_collection(preset_id, None)
+    if not ok:
+        raise HTTPException(status_code=404, detail="preset not found")
+    return {"ok": True}
+
+
 # ---------------- style presets ----------------
 @api_router.get("/style-presets")
-async def style_presets_list():
-    return {"presets": await service.list_style_presets()}
+async def style_presets_list(collection_id: Optional[str] = None):
+    return {"presets": await service.list_style_presets(collection_id=collection_id)}
 
 
 @api_router.post("/style-presets")
@@ -189,6 +267,7 @@ async def style_presets_create(req: CreateStylePresetRequest):
             reference_image_urls=req.reference_image_urls,
             style_description=req.style_description,
             reference_strength=req.reference_strength or "balanced",
+            collection_id=req.collection_id,
         )
         return preset
     except ValueError as e:

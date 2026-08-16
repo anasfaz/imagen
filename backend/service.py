@@ -9,7 +9,7 @@ import zipfile
 from datetime import datetime, timezone
 from typing import Optional
 
-from db import db, generations, batches, style_presets, settings_col
+from db import db, generations, batches, style_presets, collections, settings_col
 import gen
 import storage
 
@@ -136,8 +136,8 @@ async def _paths_to_base64(paths: list[str]) -> list[str]:
     return out
 
 
-async def create_style_preset(*, name: str, reference_image_urls: list[str], style_description: Optional[str], reference_strength: str = "balanced") -> dict:
-    """Analyze the first reference image if no description supplied, then save."""
+async def create_style_preset(*, name: str, reference_image_urls: list[str], style_description: Optional[str], reference_strength: str = "balanced", collection_id: Optional[str] = None) -> dict:
+    """Analyze the references (fuse if multiple) if no description supplied, then save."""
     # reference_image_urls are backend URLs like /api/images/<path>. Extract storage paths.
     ref_paths = [_url_to_storage_path(u) for u in reference_image_urls]
     ref_paths = [p for p in ref_paths if p]
@@ -146,14 +146,21 @@ async def create_style_preset(*, name: str, reference_image_urls: list[str], sty
         raise ValueError("no valid reference_image_urls supplied")
 
     if not style_description:
-        b64_list = await _paths_to_base64(ref_paths[:1])
-        if b64_list:
-            api_key = await get_effective_api_key()
+        api_key = await get_effective_api_key()
+        if len(ref_paths) == 1:
+            b64_list = await _paths_to_base64(ref_paths[:1])
+            if b64_list:
+                try:
+                    style_description = await gen.analyze_reference_style(b64_list[0], api_key_override=api_key)
+                except Exception as e:
+                    logger.exception("analyze_reference_style failed: %s", e)
+                    style_description = "A distinctive visual style extracted from the reference image."
+        else:
             try:
-                style_description = await gen.analyze_reference_style(b64_list[0], api_key_override=api_key)
+                style_description = await analyze_references_multi_by_paths(ref_paths)
             except Exception as e:
-                logger.exception("analyze_reference_style failed: %s", e)
-                style_description = "A distinctive visual style extracted from the reference image."
+                logger.exception("multi analyze failed: %s", e)
+                style_description = "A distinctive visual style extracted from the reference images."
 
     preset = {
         "id": str(uuid.uuid4()),
@@ -163,6 +170,7 @@ async def create_style_preset(*, name: str, reference_image_urls: list[str], sty
         "thumbnail_url": public_image_url(ref_paths[0]),
         "style_description": style_description or "",
         "reference_strength": reference_strength,
+        "collection_id": collection_id,
         "created_at": _now(),
     }
     await style_presets.insert_one({**preset})
@@ -182,8 +190,13 @@ def _url_to_storage_path(u: str) -> Optional[str]:
     return u[idx + len(marker):]
 
 
-async def list_style_presets() -> list[dict]:
-    docs = await style_presets.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+async def list_style_presets(collection_id: Optional[str] = None) -> list[dict]:
+    q = {}
+    if collection_id == "__uncategorized__":
+        q = {"$or": [{"collection_id": None}, {"collection_id": {"$exists": False}}]}
+    elif collection_id:
+        q = {"collection_id": collection_id}
+    docs = await style_presets.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return docs
 
 
@@ -206,6 +219,78 @@ async def analyze_reference_from_url(url: str) -> str:
         raise ValueError("failed to load reference image")
     key = await get_effective_api_key()
     return await gen.analyze_reference_style(b64_list[0], api_key_override=key)
+
+
+async def analyze_references_multi_by_paths(paths: list[str]) -> str:
+    """Analyse each reference then fuse into one unified description."""
+    if not paths:
+        return ""
+    b64_list = await _paths_to_base64(paths)
+    if not b64_list:
+        raise ValueError("failed to load any reference image")
+    key = await get_effective_api_key()
+    per_image = []
+    for b64 in b64_list:
+        try:
+            desc = await gen.analyze_reference_style(b64, api_key_override=key)
+            if desc:
+                per_image.append(desc)
+        except Exception as e:
+            logger.warning("analyze one ref failed: %s", e)
+    if len(per_image) <= 1:
+        return per_image[0] if per_image else ""
+    return await gen.fuse_style_descriptions(per_image, api_key_override=key)
+
+
+async def analyze_references_multi(urls: list[str]) -> str:
+    paths = [_url_to_storage_path(u) for u in urls]
+    paths = [p for p in paths if p]
+    if not paths:
+        raise ValueError("no valid reference urls")
+    return await analyze_references_multi_by_paths(paths)
+
+
+async def remix_generation_prompt(gen_id: str, n: int = 10) -> list[str]:
+    """Return N smart variations of the prompt used to create the given generation."""
+    doc = await generations.find_one({"id": gen_id, "is_deleted": {"$ne": True}})
+    if not doc:
+        raise ValueError("generation not found")
+    base = doc.get("prompt") or ""
+    key = await get_effective_api_key()
+    return await gen.remix_prompt_variations(base, n=n, api_key_override=key)
+
+
+# ----------------- collections (Team Style Library) -----------------
+async def create_collection(name: str, description: Optional[str] = None) -> dict:
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "description": description or "",
+        "created_at": _now(),
+    }
+    await collections.insert_one({**doc})
+    doc.pop("_id", None)
+    return doc
+
+
+async def list_collections() -> list[dict]:
+    docs = await collections.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # attach preset counts
+    for c in docs:
+        c["preset_count"] = await style_presets.count_documents({"collection_id": c["id"]})
+    return docs
+
+
+async def delete_collection(collection_id: str) -> bool:
+    # Un-assign presets from this collection first (don't delete presets)
+    await style_presets.update_many({"collection_id": collection_id}, {"$set": {"collection_id": None}})
+    r = await collections.delete_one({"id": collection_id})
+    return r.deleted_count > 0
+
+
+async def assign_preset_to_collection(preset_id: str, collection_id: Optional[str]) -> bool:
+    r = await style_presets.update_one({"id": preset_id}, {"$set": {"collection_id": collection_id}})
+    return r.matched_count > 0
 
 
 # ----------------- single generation -----------------

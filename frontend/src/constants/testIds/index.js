@@ -74,6 +74,32 @@ export const TID = {
     mcpCopyToken: "settings-mcp-copy-token",
     mcpRegenerate: "settings-mcp-regenerate",
   },
+  lightbox: {
+    remixBtn: "lightbox-remix-button",
+    shareBtn: "lightbox-share-button",
+  },
+  remix: {
+    dialog: "remix-dialog",
+    close: "remix-close",
+    promptRow: (i) => `remix-prompt-${i}`,
+    togglePrompt: (i) => `remix-toggle-${i}`,
+    sendToBulk: "remix-send-to-bulk",
+    regenerate: "remix-regenerate",
+  },
+  collections: {
+    section: "collections-section",
+    createBtn: "collections-create-button",
+    chip: (id) => `collections-chip-${id}`,
+    deleteBtn: (id) => `collections-delete-${id}`,
+    dialogName: "collections-dialog-name",
+    dialogSave: "collections-dialog-save",
+    assignSelect: (presetId) => `collections-assign-${presetId}`,
+  },
+  share: {
+    root: "share-page",
+    image: "share-image",
+    prompt: "share-prompt",
+  },
 };
 
 // Re-export legacy testids for other consumers of this module (e.g. testing agent).

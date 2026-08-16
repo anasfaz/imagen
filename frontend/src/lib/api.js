@@ -40,8 +40,9 @@ export async function analyzeReference(reference_image_url) {
   return data.style_description;
 }
 
-export async function listPresets() {
-  const { data } = await api.get("/style-presets");
+export async function listPresets(collectionId) {
+  const params = collectionId ? { collection_id: collectionId } : {};
+  const { data } = await api.get("/style-presets", { params });
   return data.presets;
 }
 
@@ -52,6 +53,46 @@ export async function createPreset(payload) {
 
 export async function deletePreset(id) {
   const { data } = await api.delete(`/style-presets/${id}`);
+  return data;
+}
+
+export async function analyzeReferencesMulti(reference_image_urls) {
+  const { data } = await api.post("/references/analyze-multi", { reference_image_urls });
+  return data.style_description;
+}
+
+export async function remixPrompt(genId, n = 10) {
+  const { data } = await api.post(`/gallery/${genId}/remix`, { n });
+  return data.prompts;
+}
+
+export async function getPublicShare(genId) {
+  const { data } = await api.get(`/share/${genId}`);
+  return data;
+}
+
+export async function listCollections() {
+  const { data } = await api.get("/collections");
+  return data.collections;
+}
+
+export async function createCollection(name, description) {
+  const { data } = await api.post("/collections", { name, description });
+  return data;
+}
+
+export async function deleteCollection(id) {
+  const { data } = await api.delete(`/collections/${id}`);
+  return data;
+}
+
+export async function assignPresetToCollection(collectionId, presetId) {
+  const { data } = await api.post(`/collections/${collectionId}/presets/${presetId}`);
+  return data;
+}
+
+export async function removePresetFromCollection(collectionId, presetId) {
+  const { data } = await api.delete(`/collections/${collectionId}/presets/${presetId}`);
   return data;
 }
 

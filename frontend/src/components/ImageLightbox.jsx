@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
-import { X, Download, Copy, Trash2, RefreshCw } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { X, Download, Copy, Trash2, RefreshCw, Wand2, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { absoluteUrl } from "@/lib/api";
+import { absoluteUrl, BACKEND_URL } from "@/lib/api";
 import { TID } from "@/constants/testIds";
 
-export default function ImageLightbox({ image, onClose, onDelete, onRegenerate }) {
+export default function ImageLightbox({ image, onClose, onDelete, onRegenerate, onRemix }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
@@ -34,6 +34,16 @@ export default function ImageLightbox({ image, onClose, onDelete, onRegenerate }
     try {
       await navigator.clipboard.writeText(image.prompt || "");
       toast.success("Prompt copied");
+    } catch {
+      toast.error("Clipboard blocked");
+    }
+  };
+
+  const copyShareLink = async () => {
+    const url = `${window.location.origin}/s/${image.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Public share link copied");
     } catch {
       toast.error("Clipboard blocked");
     }
@@ -110,6 +120,20 @@ export default function ImageLightbox({ image, onClose, onDelete, onRegenerate }
               className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 text-sm transition-colors"
             >
               <Copy className="w-4 h-4" /> Copy prompt
+            </button>
+            <button
+              data-testid={TID.lightbox.remixBtn}
+              onClick={() => onRemix?.(image)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 text-sm transition-colors"
+            >
+              <Wand2 className="w-4 h-4" /> Remix 10
+            </button>
+            <button
+              data-testid={TID.lightbox.shareBtn}
+              onClick={copyShareLink}
+              className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 text-sm transition-colors"
+            >
+              <Share2 className="w-4 h-4" /> Share link
             </button>
             <button
               data-testid={TID.gallery.lightboxRegenerate}
